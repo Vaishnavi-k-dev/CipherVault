@@ -33,7 +33,6 @@ function App() {
   const [shareFileId, setShareFileId] = useState("");
   const [dashboardMessage, setDashboardMessage] = useState("");
 
-  // Load dashboard data whenever a valid session is available or restored.
   useEffect(() => {
     if (token && user) {
       loadDashboardData(token);
@@ -64,7 +63,9 @@ function App() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || data.message || "Authentication failed.");
+        throw new Error(
+          data.error || data.message || "Authentication failed."
+        );
       }
 
       if (isLogin) {
@@ -80,7 +81,9 @@ function App() {
         setPassword("");
       }
     } catch (error) {
-      setMessage(error.message || "Unable to connect to the server.");
+      setMessage(
+        error.message || "Unable to connect to the server."
+      );
     } finally {
       setLoading(false);
     }
@@ -103,7 +106,9 @@ function App() {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || data.message || "Request failed.");
+      throw new Error(
+        data.error || data.message || "Request failed."
+      );
     }
 
     return data;
@@ -135,7 +140,9 @@ function App() {
       setLogs(results[3].value.logs || []);
     }
 
-    const failures = results.filter((result) => result.status === "rejected");
+    const failures = results.filter(
+      (result) => result.status === "rejected"
+    );
 
     setDashboardMessage(
       failures.length === 0
@@ -180,13 +187,23 @@ function App() {
       const response = await fetch(
         `${API_URL}/api/files/download/${fileId}`,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Download failed.");
+        let errorMessage = "Download failed.";
+
+        try {
+          const data = await response.json();
+          errorMessage = data.error || errorMessage;
+        } catch {
+          // Keep the default error message if the response is not JSON.
+        }
+
+        throw new Error(errorMessage);
       }
 
       const blob = await response.blob();
@@ -195,12 +212,16 @@ function App() {
 
       link.href = url;
       link.download = filename || "downloaded-file";
+
       document.body.appendChild(link);
       link.click();
       link.remove();
+
       window.URL.revokeObjectURL(url);
 
-      setDashboardMessage("File decrypted and downloaded successfully.");
+      setDashboardMessage(
+        "File decrypted and downloaded successfully."
+      );
     } catch (error) {
       setDashboardMessage(error.message);
     }
@@ -209,24 +230,44 @@ function App() {
   async function shareFile(event) {
     event.preventDefault();
 
+    if (!shareFileId) {
+      setDashboardMessage("Please select a file to share.");
+      return;
+    }
+
+    if (!shareEmail.trim()) {
+      setDashboardMessage("Please enter the recipient's email.");
+      return;
+    }
+
     try {
       const data = await apiRequest("/api/files/share", {
         method: "POST",
         body: JSON.stringify({
           file_id: shareFileId,
-          email: shareEmail,
+          email: shareEmail.trim(),
         }),
       });
 
-      setDashboardMessage(data.message || "File shared successfully.");
+      setDashboardMessage(
+        data.message || "File shared successfully."
+      );
 
       setShareEmail("");
       setShareFileId("");
+      setActiveTab("my-files");
 
       await loadDashboardData();
     } catch (error) {
       setDashboardMessage(error.message);
     }
+  }
+
+  function openShareForm(file) {
+    setShareFileId(file.id);
+    setShareEmail("");
+    setDashboardMessage("");
+    setActiveTab("share");
   }
 
   function logout() {
@@ -244,9 +285,17 @@ function App() {
     setEmail("");
     setPassword("");
     setName("");
+    setSelectedFile(null);
+    setShareEmail("");
+    setShareFileId("");
+    setActiveTab("my-files");
   }
 
   if (token && user) {
+    const fileToShare = files.find(
+      (file) => file.id === shareFileId
+    );
+
     return (
       <div className="dashboard-layout">
         <aside className="sidebar">
@@ -258,35 +307,55 @@ function App() {
           <p className="sidebar-caption">SECURE WORKSPACE</p>
 
           <button
-            className={activeTab === "my-files" ? "nav-item active" : "nav-item"}
+            className={
+              activeTab === "my-files"
+                ? "nav-item active"
+                : "nav-item"
+            }
             onClick={() => setActiveTab("my-files")}
           >
             My Files
           </button>
 
           <button
-            className={activeTab === "upload" ? "nav-item active" : "nav-item"}
+            className={
+              activeTab === "upload"
+                ? "nav-item active"
+                : "nav-item"
+            }
             onClick={() => setActiveTab("upload")}
           >
             Upload File
           </button>
 
           <button
-            className={activeTab === "shared" ? "nav-item active" : "nav-item"}
+            className={
+              activeTab === "shared"
+                ? "nav-item active"
+                : "nav-item"
+            }
             onClick={() => setActiveTab("shared")}
           >
             Shared With Me
           </button>
 
           <button
-            className={activeTab === "alerts" ? "nav-item active" : "nav-item"}
+            className={
+              activeTab === "alerts"
+                ? "nav-item active"
+                : "nav-item"
+            }
             onClick={() => setActiveTab("alerts")}
           >
             Security Alerts
           </button>
 
           <button
-            className={activeTab === "logs" ? "nav-item active" : "nav-item"}
+            className={
+              activeTab === "logs"
+                ? "nav-item active"
+                : "nav-item"
+            }
             onClick={() => setActiveTab("logs")}
           >
             Security Logs
@@ -295,16 +364,23 @@ function App() {
           <div className="sidebar-bottom">
             <div className="user-badge">
               <div className="avatar">
-                {(user.name || user.email || "U").charAt(0).toUpperCase()}
+                {(user.name || user.email || "U")
+                  .charAt(0)
+                  .toUpperCase()}
               </div>
 
               <div className="user-details">
-                <strong>{user.name || "CipherVault User"}</strong>
+                <strong>
+                  {user.name || "CipherVault User"}
+                </strong>
                 <span>{user.email}</span>
               </div>
             </div>
 
-            <button className="logout-button" onClick={logout}>
+            <button
+              className="logout-button"
+              onClick={logout}
+            >
               Sign out
             </button>
           </div>
@@ -313,12 +389,15 @@ function App() {
         <main className="dashboard-main">
           <header className="topbar">
             <div>
-              <p className="eyebrow">CIPHER VAULT / WORKSPACE</p>
+              <p className="eyebrow">
+                CIPHER VAULT / WORKSPACE
+              </p>
 
               <h1>
                 {activeTab === "my-files" && "My Files"}
                 {activeTab === "upload" && "Secure File Upload"}
                 {activeTab === "shared" && "Shared With Me"}
+                {activeTab === "share" && "Share File"}
                 {activeTab === "alerts" && "Security Alerts"}
                 {activeTab === "logs" && "Security Logs"}
               </h1>
@@ -332,9 +411,17 @@ function App() {
 
           <div className="welcome-banner">
             <div>
-              <p className="eyebrow">YOUR PRIVATE WORKSPACE</p>
-              <h2>Welcome back, {user.name || user.email}.</h2>
-              <p>Protect, manage, and share your files securely.</p>
+              <p className="eyebrow">
+                YOUR PRIVATE WORKSPACE
+              </p>
+
+              <h2>
+                Welcome back, {user.name || user.email}.
+              </h2>
+
+              <p>
+                Protect, manage, and share your files securely.
+              </p>
             </div>
 
             <div className="banner-symbol">⬡</div>
@@ -350,7 +437,9 @@ function App() {
             <div className="stat-card">
               <span className="stat-label">SHARED FILES</span>
               <strong>{sharedFiles.length}</strong>
-              <span className="stat-note">Files shared with you</span>
+              <span className="stat-note">
+                Files shared with you
+              </span>
             </div>
 
             <div className="stat-card">
@@ -369,7 +458,10 @@ function App() {
           </section>
 
           {dashboardMessage && (
-            <div className="dashboard-message" role="status">
+            <div
+              className="dashboard-message"
+              role="status"
+            >
               {dashboardMessage}
             </div>
           )}
@@ -380,7 +472,9 @@ function App() {
                 <div className="section-heading">
                   <div>
                     <h2>Your encrypted files</h2>
-                    <p>Files you have uploaded to CipherVault.</p>
+                    <p>
+                      Files you have uploaded to CipherVault.
+                    </p>
                   </div>
 
                   <button
@@ -396,7 +490,8 @@ function App() {
                     <div className="empty-icon">▤</div>
                     <h3>No files yet</h3>
                     <p>
-                      Upload your first file to begin protecting your data.
+                      Upload your first file to begin protecting
+                      your data.
                     </p>
                   </div>
                 ) : (
@@ -418,7 +513,10 @@ function App() {
                             <td>{file.filename}</td>
 
                             <td>
-                              {((file.size_bytes || 0) / 1024).toFixed(1)} KB
+                              {(
+                                (file.size_bytes || 0) / 1024
+                              ).toFixed(1)}{" "}
+                              KB
                             </td>
 
                             <td>
@@ -431,7 +529,10 @@ function App() {
                               <button
                                 className="text-button"
                                 onClick={() =>
-                                  downloadFile(file.id, file.filename)
+                                  downloadFile(
+                                    file.id,
+                                    file.filename
+                                  )
                                 }
                               >
                                 Download
@@ -441,10 +542,9 @@ function App() {
                             <td>
                               <button
                                 className="text-button"
-                                onClick={() => {
-                                  setShareFileId(file.id);
-                                  setActiveTab("share");
-                                }}
+                                onClick={() =>
+                                  openShareForm(file)
+                                }
                               >
                                 Share
                               </button>
@@ -463,18 +563,25 @@ function App() {
                 <h2>Encrypt and upload a file</h2>
 
                 <p>
-                  Your file will be encrypted by the backend before it is
-                  stored. Maximum file size: 10 MB.
+                  Your file will be encrypted by the backend
+                  before it is stored. Maximum file size: 10 MB.
                 </p>
 
-                <form onSubmit={uploadFile} className="upload-form">
-                  <label htmlFor="secure-file">Choose a file</label>
+                <form
+                  onSubmit={uploadFile}
+                  className="upload-form"
+                >
+                  <label htmlFor="secure-file">
+                    Choose a file
+                  </label>
 
                   <input
                     id="secure-file"
                     type="file"
                     onChange={(event) =>
-                      setSelectedFile(event.target.files?.[0] || null)
+                      setSelectedFile(
+                        event.target.files?.[0] || null
+                      )
                     }
                   />
 
@@ -484,7 +591,10 @@ function App() {
                     </p>
                   )}
 
-                  <button className="primary-button" type="submit">
+                  <button
+                    className="primary-button"
+                    type="submit"
+                  >
                     Encrypt &amp; upload
                   </button>
                 </form>
@@ -497,7 +607,8 @@ function App() {
                   <div>
                     <h2>Files shared with you</h2>
                     <p>
-                      Download files another registered user shared with you.
+                      Download files another registered user
+                      shared with you.
                     </p>
                   </div>
                 </div>
@@ -507,7 +618,8 @@ function App() {
                     <div className="empty-icon">⇄</div>
                     <h3>No shared files</h3>
                     <p>
-                      Files shared with your account will appear here.
+                      Files shared with your account will appear
+                      here.
                     </p>
                   </div>
                 ) : (
@@ -528,12 +640,15 @@ function App() {
                             <td>{file.filename}</td>
 
                             <td>
-                              {((file.size_bytes || 0) / 1024).toFixed(1)} KB
+                              {(
+                                (file.size_bytes || 0) / 1024
+                              ).toFixed(1)}{" "}
+                              KB
                             </td>
 
                             <td>
                               <span className="file-status">
-                                {file.status}
+                                {file.status || "encrypted"}
                               </span>
                             </td>
 
@@ -541,7 +656,10 @@ function App() {
                               <button
                                 className="text-button"
                                 onClick={() =>
-                                  downloadFile(file.id, file.filename)
+                                  downloadFile(
+                                    file.id,
+                                    file.filename
+                                  )
                                 }
                               >
                                 Download
@@ -561,33 +679,99 @@ function App() {
                 <h2>Share an encrypted file</h2>
 
                 <p>
-                  Share access with another registered CipherVault user by
-                  email.
+                  Share access with another registered
+                  CipherVault user by email.
                 </p>
 
-                <form onSubmit={shareFile} className="upload-form">
-                  <label htmlFor="share-file">File ID</label>
+                <div className="selected-file">
+                  <strong>Selected file:</strong>{" "}
+                  {fileToShare
+                    ? fileToShare.filename
+                    : "No file selected"}
 
-                  <input
-                    id="share-file"
-                    value={shareFileId}
-                    onChange={(event) => setShareFileId(event.target.value)}
-                    required
-                  />
+                  {fileToShare && (
+                    <div style={{ marginTop: "12px" }}>
+                      <strong>File ID</strong>
 
-                  <label htmlFor="recipient-email">Recipient email</label>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "8px",
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                          marginTop: "6px",
+                        }}
+                      >
+                        <code
+                          style={{
+                            overflowWrap: "anywhere",
+                          }}
+                        >
+                          {fileToShare.id}
+                        </code>
+
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(
+                                fileToShare.id
+                              );
+                              setDashboardMessage(
+                                "File ID copied to clipboard."
+                              );
+                            } catch {
+                              setDashboardMessage(
+                                "Unable to copy the ID. Select and copy it manually."
+                              );
+                            }
+                          }}
+                        >
+                          Copy ID
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <form
+                  onSubmit={shareFile}
+                  className="upload-form"
+                >
+                  <label htmlFor="recipient-email">
+                    Recipient email
+                  </label>
 
                   <input
                     id="recipient-email"
                     type="email"
                     value={shareEmail}
-                    onChange={(event) => setShareEmail(event.target.value)}
-                    placeholder="recipient@example.com"
+                    onChange={(event) =>
+                      setShareEmail(event.target.value)
+                    }
+                    placeholder="sharetest@example.com"
                     required
                   />
 
-                  <button className="primary-button" type="submit">
+                  <button
+                    className="primary-button"
+                    type="submit"
+                    disabled={!fileToShare}
+                  >
                     Share file
+                  </button>
+
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => {
+                      setShareFileId("");
+                      setShareEmail("");
+                      setActiveTab("my-files");
+                    }}
+                  >
+                    Cancel
                   </button>
                 </form>
               </div>
@@ -599,7 +783,8 @@ function App() {
                   <div>
                     <h2>Threat detection</h2>
                     <p>
-                      Alerts returned by the backend security monitor.
+                      Alerts returned by the backend security
+                      monitor.
                     </p>
                   </div>
 
@@ -616,8 +801,9 @@ function App() {
                     <div className="empty-icon">✓</div>
                     <h3>No active alerts returned</h3>
                     <p>
-                      The backend did not report any alerts for your account
-                      during its current detection window.
+                      The backend did not report any alerts
+                      for your account during its current
+                      detection window.
                     </p>
                   </div>
                 ) : (
@@ -632,11 +818,15 @@ function App() {
                         </span>
 
                         <div>
-                          <h3>{alert.type || "Security alert"}</h3>
+                          <h3>
+                            {alert.type || "Security alert"}
+                          </h3>
                           <p>{alert.message}</p>
 
                           {alert.count != null && (
-                            <small>Related events: {alert.count}</small>
+                            <small>
+                              Related events: {alert.count}
+                            </small>
                           )}
                         </div>
                       </div>
@@ -652,7 +842,8 @@ function App() {
                   <div>
                     <h2>Security activity</h2>
                     <p>
-                      Recent security events recorded for your account.
+                      Recent security events recorded for
+                      your account.
                     </p>
                   </div>
 
@@ -669,7 +860,8 @@ function App() {
                     <div className="empty-icon">≡</div>
                     <h3>No security logs returned</h3>
                     <p>
-                      Activity recorded for your account will appear here.
+                      Activity recorded for your account
+                      will appear here.
                     </p>
                   </div>
                 ) : (
@@ -685,20 +877,33 @@ function App() {
 
                       <tbody>
                         {logs.map((log, index) => (
-                          <tr key={log.id || `${log.event}-${index}`}>
+                          <tr
+                            key={
+                              log.id ||
+                              `${log.event}-${index}`
+                            }
+                          >
                             <td>
-                              {log.event || log.action || "Security event"}
+                              {log.event ||
+                                log.action ||
+                                "Security event"}
                             </td>
 
                             <td>
-                              {log.details || log.description || "—"}
+                              {log.details ||
+                                log.description ||
+                                "—"}
                             </td>
 
                             <td>
                               {log.timestamp
-                                ? new Date(log.timestamp).toLocaleString()
+                                ? new Date(
+                                    log.timestamp
+                                  ).toLocaleString()
                                 : log.created_at
-                                  ? new Date(log.created_at).toLocaleString()
+                                  ? new Date(
+                                      log.created_at
+                                    ).toLocaleString()
                                   : "—"}
                             </td>
                           </tr>
@@ -742,8 +947,9 @@ function App() {
           </h1>
 
           <p>
-            A secure workspace powered by hybrid cryptography, authenticated
-            encryption, and intelligent threat detection.
+            A secure workspace powered by hybrid cryptography,
+            authenticated encryption, and intelligent threat
+            detection.
           </p>
 
           <div className="security-features">
@@ -787,7 +993,9 @@ function App() {
 
           <p className="eyebrow">YOUR SECURE WORKSPACE</p>
 
-          <h2>{isLogin ? "Welcome back" : "Create your account"}</h2>
+          <h2>
+            {isLogin ? "Welcome back" : "Create your account"}
+          </h2>
 
           <p className="form-subtitle">
             {isLogin
@@ -798,7 +1006,9 @@ function App() {
           <div className="auth-tabs">
             <button
               type="button"
-              className={isLogin ? "auth-tab selected" : "auth-tab"}
+              className={
+                isLogin ? "auth-tab selected" : "auth-tab"
+              }
               onClick={() => {
                 setIsLogin(true);
                 setMessage("");
@@ -809,7 +1019,9 @@ function App() {
 
             <button
               type="button"
-              className={!isLogin ? "auth-tab selected" : "auth-tab"}
+              className={
+                !isLogin ? "auth-tab selected" : "auth-tab"
+              }
               onClick={() => {
                 setIsLogin(false);
                 setMessage("");
@@ -819,7 +1031,10 @@ function App() {
             </button>
           </div>
 
-          <form className="auth-form" onSubmit={handleAuth}>
+          <form
+            className="auth-form"
+            onSubmit={handleAuth}
+          >
             {!isLogin && (
               <div className="input-group">
                 <label htmlFor="name">Full name</label>
@@ -828,7 +1043,9 @@ function App() {
                   id="name"
                   type="text"
                   value={name}
-                  onChange={(event) => setName(event.target.value)}
+                  onChange={(event) =>
+                    setName(event.target.value)
+                  }
                   placeholder="Enter your name"
                   autoComplete="name"
                   required
@@ -843,7 +1060,9 @@ function App() {
                 id="email"
                 type="email"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) =>
+                  setEmail(event.target.value)
+                }
                 placeholder="you@example.com"
                 autoComplete="email"
                 required
@@ -857,10 +1076,14 @@ function App() {
                 id="password"
                 type="password"
                 value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                onChange={(event) =>
+                  setPassword(event.target.value)
+                }
                 placeholder="Enter your password"
                 autoComplete={
-                  isLogin ? "current-password" : "new-password"
+                  isLogin
+                    ? "current-password"
+                    : "new-password"
                 }
                 minLength={isLogin ? undefined : 12}
                 required
@@ -874,7 +1097,10 @@ function App() {
             </div>
 
             {message && (
-              <div className="auth-message" role="alert">
+              <div
+                className="auth-message"
+                role="alert"
+              >
                 {message}
               </div>
             )}
@@ -893,8 +1119,8 @@ function App() {
           </form>
 
           <p className="auth-disclaimer">
-            Your credentials are protected using secure authentication
-            practices.
+            Your credentials are protected using secure
+            authentication practices.
           </p>
         </div>
 
