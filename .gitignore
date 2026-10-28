@@ -1,0 +1,49 @@
+﻿Node.js dependencies
+
+node_modules/
+
+Production build
+
+dist/
+
+Environment variables
+
+.env
+.env.*
+
+Logs
+
+.log
+npm-debug.log
+yarn-debug.log*
+pnpm-debug.log*
+
+IDE settings
+
+.idea/
+.vscode/
+
+Operating system files
+
+.DS_Store
+Thumbs.db.venv/
+__pycache__/
+*.py[cod]
+backend/venv/
+backend/__pycache__/
+backend/.env
+.env
+.env.*
+!.env.example
+backend/keys/private_key.pem
+backend/uploads/
+backend/decrypted_sample.txt
+backend/file_routes_backup.py
+backend/sample.enc
+backend/sample.txt
+downloaded_sample.txt
+sample_upload.txt
+shared_download.txt
+
+# Root Python virtual environment
+.venv/
